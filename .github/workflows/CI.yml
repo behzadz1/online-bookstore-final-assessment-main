@@ -45,7 +45,7 @@ jobs:
   lint:
     name: Lint (flake8)
     runs-on: ubuntu-latest
-    # Skip lint on Dependabot PRs to avoid noisy reds (optional)
+    # Skip lint on Dependabot to avoid noisy red PRs
     if: ${{ github.actor != 'dependabot[bot]' }}
     steps:
       - uses: actions/checkout@v4
@@ -62,7 +62,7 @@ jobs:
   security:
     name: Security (bandit)
     runs-on: ubuntu-latest
-    # Make security step non-blocking for now; turn strict later
+    # Skip bandit on Dependabot; keep strict for your pushes/PRs
     if: ${{ github.actor != 'dependabot[bot]' }}
     steps:
       - uses: actions/checkout@v4
@@ -75,4 +75,3 @@ jobs:
           pip install bandit
       - name: bandit scan
         run: bandit -q -r .
-        continue-on-error: true
