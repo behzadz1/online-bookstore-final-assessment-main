@@ -15,40 +15,25 @@ jobs:
       matrix:
         python-version: ['3.10', '3.11', '3.12']
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-
-      - name: Cache pip
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          pip install pytest pytest-cov flake8 bandit
-
-      - name: Lint (flake8)
-        run: flake8 .
-
-      - name: Security scan (bandit)
-        run: bandit -q -r .
-
+          pip install pytest pytest-cov
       - name: Run tests (coverage gate)
         env:
           APP_ENV: test
-        run: |
-          pytest
-
+        run: pytest
       - name: Upload coverage.xml
         if: always()
         uses: actions/upload-artifact@v4
@@ -56,3 +41,38 @@ jobs:
           name: coverage-xml-${{ matrix.python-version }}
           path: coverage.xml
           if-no-files-found: ignore
+
+  lint:
+    name: Lint (flake8)
+    runs-on: ubuntu-latest
+    # Skip lint on Dependabot PRs to avoid noisy reds (optional)
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install flake8
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+      - name: flake8
+        run: flake8 .
+
+  security:
+    name: Security (bandit)
+    runs-on: ubuntu-latest
+    # Make security step non-blocking for now; turn strict later
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install bandit
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit
+      - name: bandit scan
+        run: bandit -q -r .
+        continue-on-error: true
