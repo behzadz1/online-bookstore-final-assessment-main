@@ -9,7 +9,7 @@ app.secret_key = 'your_secret_key'
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=False
+    SESSION_COOKIE_SECURE=False  # set True in production
 )
 
 # In-memory stores
@@ -28,9 +28,6 @@ BOOKS = [
 ]
 # O(1) lookups by title
 BOOKS_BY_TITLE = {b.title: b for b in BOOKS}
-
-# Single cart (session/global for demo)
-cart = Cart()
 
 def find_book(title: str):
     # Fast dict lookup
@@ -53,6 +50,24 @@ def response_with_messages(payload: dict):
         payload["total"] = float(f"{payload['total']:.2f}")
     return jsonify(payload)
 
+# -------------------------
+# Session-backed cart utils
+# -------------------------
+def load_cart() -> Cart:
+    """Build a Cart from session data stored as {title: qty}."""
+    raw = session.get('cart') or {}
+    c = Cart()
+    for title, qty in raw.items():
+        book = BOOKS_BY_TITLE.get(title)
+        q = safe_int(qty, 0)
+        if book and q > 0:
+            c.add_item(book, q)
+    return c
+
+def save_cart(c: Cart) -> None:
+    """Save Cart back to session as {title: qty}."""
+    session['cart'] = {title: item.quantity for title, item in c.items.items()}
+
 @app.route('/healthz')
 def healthz():
     return response_with_messages({"status": "ok"})
@@ -74,7 +89,9 @@ def add_to_cart():
     if not book:
         flash("Book not found.", "error")
         return redirect(url_for('view_cart'))
+    cart = load_cart()
     cart.add_item(book, qty)
+    save_cart(cart)
     flash(f"Added {qty} × {title} to cart.", "success")
     return redirect(url_for('view_cart'))
 
@@ -83,6 +100,7 @@ def add_to_cart():
 def update_cart():
     title = request.form.get('title')
     qty = safe_int(request.form.get('quantity'), None)
+    cart = load_cart()
     if qty is None:
         flash("Invalid quantity.", "error")
         return redirect(url_for('view_cart'))
@@ -95,17 +113,21 @@ def update_cart():
             flash("Cart updated.", "success")
         except Exception:
             flash("Invalid quantity.", "error")
+    save_cart(cart)
     return redirect(url_for('view_cart'))
 
 @app.route('/remove-from-cart', methods=['POST'])
 def remove_from_cart():
     title = request.form.get('title')
+    cart = load_cart()
     cart.remove_item(title)
+    save_cart(cart)
     flash("Item removed.", "info")
     return redirect(url_for('view_cart'))
 
 @app.route('/cart')
 def view_cart():
+    cart = load_cart()
     total = cart.get_total_price()
     return response_with_messages({
         "items": [{ "title": i.book.title, "qty": i.quantity, "price": i.book.price } for i in cart.items.values()],
@@ -114,17 +136,19 @@ def view_cart():
 
 @app.route('/clear-cart', methods=['POST'])
 def clear_cart():
-    cart.clear()
+    session.pop('cart', None)
     flash("Cart cleared.", "info")
     return redirect(url_for('view_cart'))
 
 @app.route('/checkout')
 def checkout():
+    cart = load_cart()
     return response_with_messages({"total": cart.get_total_price(), "items": len(cart.items)})
 
 @app.route('/process-checkout', methods=['POST'])
 @app.route('/process_checkout', methods=['POST'])
 def process_checkout():
+    cart = load_cart()
     name = request.form.get('name', '').strip()
     email = request.form.get('email', '').strip()
     address = request.form.get('address', '').strip()
@@ -154,18 +178,10 @@ def process_checkout():
     }
 
     # Validate payment FIRST so error keywords appear even if cart is empty
-    # if payment_method == "card":
-    #     card = payment_info["card_number"]
-    #     if not card or not card.isdigit() or len(card) < 12:
-    #         flash("Invalid card details: card/expiry/cvv.", "error")
-    #     elif str(card).endswith("1111"):
-    #         flash("Card declined.", "error")
-    
     if payment_method == "card":
         card = payment_info["card_number"]
         expiry = payment_info["expiry"]
         cvv = payment_info["cvv"]
-
         # Validate card number, expiry, and CVV
         if (
             not card or not card.isdigit() or len(card) < 12
@@ -175,8 +191,6 @@ def process_checkout():
             flash("Invalid card details: card/expiry/cvv.", "error")
         elif str(card).endswith("1111"):
             flash("Card declined.", "error")
-
-    
     elif payment_method == "paypal":
         paypal_email = payment_info.get("paypal_email", "").strip()
         # Validate PayPal email format and domain pattern
@@ -185,12 +199,6 @@ def process_checkout():
         elif not re.search(r"@.+\.", paypal_email):
             flash("Invalid PayPal email domain.", "error")
 
-    
-    
-    # elif payment_method == "paypal":
-    #     if not EMAIL_RE.match(payment_info["paypal_email"]):
-    #         flash("Invalid PayPal email.", "error")
-
     if cart.is_empty():
         flash("Your cart is empty.", "error")
         return redirect(url_for('view_cart'))
@@ -198,10 +206,16 @@ def process_checkout():
     # Stop flow on invalid payment
     if payment_method == "card":
         card = payment_info["card_number"]
-        if (not card or not card.isdigit() or len(card) < 12) or str(card).endswith("1111"):
+        expiry = payment_info["expiry"]
+        cvv = payment_info["cvv"]
+        if ((not card or not card.isdigit() or len(card) < 12)
+            or (not expiry or not re.match(r"^(0[1-9]|1[0-2])\/\d{2}$", expiry))
+            or (not cvv or not cvv.isdigit() or len(cvv) < 3)
+            or str(card).endswith("1111")):
             return redirect(url_for('checkout'))
     elif payment_method == "paypal":
-        if not EMAIL_RE.match(payment_info["paypal_email"]):
+        paypal_email = payment_info.get("paypal_email", "").strip()
+        if (not paypal_email or not EMAIL_RE.match(paypal_email) or not re.search(r"@.+\.", paypal_email)):
             return redirect(url_for('checkout'))
 
     # Amount + discount
@@ -235,7 +249,8 @@ def process_checkout():
         u.add_order(order)
 
     EmailService.send_order_confirmation(email, order)
-    cart.clear()
+    # Clear session cart on success
+    session.pop('cart', None)
     return redirect(url_for('order_confirmation', order_id=order_id))
 
 @app.route('/order-confirmation/<order_id>')
@@ -293,3 +308,6 @@ def account():
     u = users[email]
     history = [{"order_id": o.order_id, "total": o.total_amount} for o in u.get_order_history()]
     return response_with_messages({"email": email, "orders": history})
+
+if __name__ == "__main__":
+    app.run(debug=True)
