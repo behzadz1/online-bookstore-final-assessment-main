@@ -1,0 +1,19 @@
+[run]
+# Only measure your application code; ignore tests and profiling utilities
+omit =
+    profiles/*
+    tests/*
+    */site-packages/*
+    */dist-packages/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+    def main\(
+    # Non-runnable branches
+    if 0:
+    if False:
+
+precision = 2
+show_missing = True
