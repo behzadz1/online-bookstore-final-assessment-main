@@ -1,13 +1,16 @@
-# Convenience targets for local dev
-.PHONY: test lint security ci
+.PHONY: test lint coverage report clean
 
 test:
-	APP_ENV=test pytest
+	pytest -q --disable-warnings --cov=. --cov-report=term-missing
 
 lint:
 	flake8 .
 
-security:
-	bandit -q -r .
+coverage:
+	pytest -q --disable-warnings --cov=. --cov-report=html:reports/htmlcov
 
-ci: lint security test
+report:
+	pytest -v --html=reports/test-report.html --self-contained-html
+
+clean:
+	rm -rf __pycache__ .pytest_cache .coverage reports/
