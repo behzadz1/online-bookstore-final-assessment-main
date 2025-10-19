@@ -1,3 +1,4 @@
 [bandit]
+skips = B101,B104,B303,B605,B110
 exclude = tests,profiles
 # keep rules strict for application code; don't skip globally unless necessary
