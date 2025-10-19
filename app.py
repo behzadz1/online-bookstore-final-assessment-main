@@ -21,8 +21,7 @@ import re
 import uuid
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or token_hex(32)
-# app.secret_key = "your_secret_key"
+app.secret_key = "your_secret_key"
 
 # Security: session cookie flags (tweak SECURE=True in production under HTTPS)
 app.config.update(
@@ -382,5 +381,4 @@ def account():
 
 
 if __name__ == "__main__":
-    # app.run(debug=True)
-    app.run()
+    app.run(debug=True)
