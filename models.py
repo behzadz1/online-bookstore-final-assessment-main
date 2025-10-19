@@ -1,8 +1,16 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional
-from werkzeug.security import generate_password_hash, check_password_hash
-import random, time, os
+from typing import Dict, List
+
+from werkzeug.security import (
+    generate_password_hash,
+    check_password_hash,
+)
+
+import random
+import time
+import os
+
 
 @dataclass
 class Book:
@@ -11,13 +19,15 @@ class Book:
     price: float
     image: str
 
+
 class CartItem:
-    def __init__(self, book: 'Book', quantity: int = 1):
+    def __init__(self, book: "Book", quantity: int = 1):
         self.book = book
         self.quantity = int(quantity)
 
     def get_total_price(self) -> float:
         return self.book.price * self.quantity
+
 
 class Cart:
     def __init__(self):
@@ -26,7 +36,7 @@ class Cart:
     def is_empty(self) -> bool:
         return len(self.items) == 0
 
-    def add_item(self, book: 'Book', quantity: int = 1):
+    def add_item(self, book: "Book", quantity: int = 1):
         q = int(quantity)
         if q <= 0:
             return
@@ -57,6 +67,7 @@ class Cart:
     def get_total_price(self) -> float:
         return sum(item.book.price * item.quantity for item in self.items.values())
 
+
 @dataclass
 class Order:
     order_id: str
@@ -66,6 +77,7 @@ class Order:
     shipping_info: dict
     total_amount: float
     order_date: datetime = datetime.now()
+
 
 class User:
     def __init__(self, email: str, password: str, name: str = "", address: str = ""):
@@ -88,6 +100,7 @@ class User:
     def get_order_history(self) -> List[Order]:
         return sorted(self._orders, key=lambda o: o.order_date, reverse=True)
 
+
 class PaymentGateway:
     @staticmethod
     def process_payment(payment_info: dict, amount: float) -> dict:
@@ -99,10 +112,19 @@ class PaymentGateway:
 
         # Decline cards ending with 1111 (test scenario)
         if method == "card" and str(card).strip().endswith("1111"):
-            return {"success": False, "message": "Card declined", "transaction_id": None}
+            return {
+                "success": False,
+                "message": "Card declined",
+                "transaction_id": None,
+            }
 
         txn = f"TXN{random.randint(100000, 999999)}"
-        return {"success": True, "message": "Payment processed successfully", "transaction_id": txn}
+        return {
+            "success": True,
+            "message": "Payment processed successfully",
+            "transaction_id": txn,
+        }
+
 
 class EmailService:
     @staticmethod

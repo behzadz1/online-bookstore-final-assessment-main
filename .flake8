@@ -1,4 +1,8 @@
 [flake8]
 max-line-length = 100
-extend-ignore = E203,W503
-exclude = .git,__pycache__,.venv,venv,dist,build
+exclude = .git,__pycache__,env,venv,build,dist,profiles
+# keep F401 enabled in app code; tests often import helpers dynamically, so:
+per-file-ignores =
+    tests/*: F401
+
+

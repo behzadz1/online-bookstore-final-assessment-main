@@ -1,0 +1,3 @@
+[bandit]
+skips = B101,B104,B303,B605,B110
+exclude = tests,profiles

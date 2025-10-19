@@ -8,15 +8,18 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from models import Book, Cart
 
+
 def bench_cart_total():
     cart = Cart()
     b = Book("Cheap", "Cat", 1.0, "/x.jpg")
     cart.add_item(b, 300_000)  # large quantity to magnify inefficiency
     return timeit.timeit(cart.get_total_price, number=1)
 
+
 def main():
     t = bench_cart_total()
     print(f"Cart total time: {t:.6f}s")
+
 
 if __name__ == "__main__":
     main()
