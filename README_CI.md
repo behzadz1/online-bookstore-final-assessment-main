@@ -33,3 +33,4 @@ make security      # Run bandit security scan
 APP_ENV=test make test   # Run tests with coverage
 # or directly
 APP_ENV=test pytest -v --cov=. --cov-report=term-missing
+```
