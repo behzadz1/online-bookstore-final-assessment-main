@@ -218,7 +218,7 @@ During systematic testing we identified functional, security, and performance is
 * **Fix:** `uuid.uuid4().hex[:12].upper()` (or `secrets.token_hex`).
 * **Verification:** `bandit -r .` clean; IDs remain unique.
 
-
+![alt text](Screenshot.png)
 
 ## 5) Performance Evidence (Before → After)
 
@@ -227,10 +227,6 @@ During systematic testing we identified functional, security, and performance is
 * **Command:** `python profiles/cprofile_checkout.py` (included in repo).
 * **Timeit micro-benchmarks:** Faster repeated adds/checkouts; results consistent across runs.
 
-*(Insert screenshots in your submission)*
-
-* `screenshots/profile-before.png`
-* `screenshots/profile-after.png`
 
 
 ## 6) Verification: Test Coverage & CI
@@ -238,12 +234,6 @@ During systematic testing we identified functional, security, and performance is
 * **Coverage:** ~**93–94%** total lines.
 * **All tests passing:** 30+ across unit, integration, edge, performance, sessions.
 * **CI/CD:** GitHub Actions runs **flake8**, **bandit**, **pytest w/ coverage gate**, uploads **HTML & XML reports**.
-
-*(Insert screenshots)*
-
-* `screenshots/ci-green.png`
-* `screenshots/coverage-93.png`
-* `screenshots/pytest-pass.png`
 
 
 
